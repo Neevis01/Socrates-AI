@@ -1,0 +1,18 @@
+{
+    "name": "Socrates - AI Reflection",
+    "short_name": "Socrates",
+    "description": "Ein digitaler Philosophie-Sparringspartner.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#121212",
+    "theme_color": "#121212",
+    "orientation": "portrait",
+    "icons": [
+      {
+        "src": "icon.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable"
+      }
+    ]
+  }

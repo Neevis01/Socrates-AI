@@ -1,0 +1,564 @@
+/* ==========================================================================
+   1. GLOBALE VARIABLEN & RESET
+   ========================================================================== */
+   :root {
+    /* Typografie */
+    --font-modern: 'Inter', system-ui, sans-serif;
+    --font-classic: 'Cormorant Garamond', serif;
+    
+    /* Farbpalette (Edler Dark Mode) */
+    --bg-app: #121212;         /* Sehr tiefes Dunkelgrau für Hauptbereich */
+    --bg-sidebar: #18181b;     /* Etwas heller für die Seitenleiste */
+    --bg-input: #202024;       /* Hintergrund für Eingabefeld */
+    --bg-user-bubble: #27272a; /* Blase für Nutzer-Nachrichten */
+    --bg-hover: #2a2a30;       /* Hover-Status für Menüs */
+    
+    /* Text & Akzente */
+    --text-main: #e4e4e7;      /* Weiches Weiß für normale Texte */
+    --text-muted: #a1a1aa;     /* Gedämpftes Grau für Metadaten/Zeiten */
+    --gold-accent: #d4af37;    /* Klassisches Altgold für Sokrates */
+    --gold-hover: #e5c158;     /* Helleres Gold für Hover */
+    --danger: #ef4444;         /* Rot für Löschen-Buttons */
+    
+    /* Layout */
+    --sidebar-width: 320px;
+    --header-height: 60px;
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: var(--font-modern);
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden; /* Verhindert Scrollen der ganzen Seite */
+    line-height: 1.5;
+  }
+  
+  /* Verstecken von Elementen via JS */
+  .hidden {
+    display: none !important;
+  }
+  
+  /* ==========================================================================
+     2. CUSTOM SCROLLBAR (Für Webkit Browser)
+     ========================================================================== */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
+  
+  /* ==========================================================================
+     3. APP LAYOUT (Grid)
+     ========================================================================== */
+  .app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+  }
+  
+  /* ==========================================================================
+     4. SEITENLEISTE (Sidebar)
+     ========================================================================== */
+  .sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid #27272a;
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar-header {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-bottom: 1px solid #27272a;
+  }
+  
+  .sidebar-title {
+    font-family: var(--font-classic);
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--gold-accent);
+    letter-spacing: 0.05em;
+  }
+  
+  .btn-new {
+    background-color: transparent;
+    color: var(--text-main);
+    border: 1px solid #3f3f46;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-family: var(--font-modern);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+  }
+  
+  .btn-new:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--text-muted);
+  }
+  
+  .reflection-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .reflection-item {
+    padding: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition-smooth);
+    border: 1px solid transparent;
+  }
+  
+  .reflection-item:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  .reflection-item.active {
+    background-color: var(--bg-hover);
+    border-color: #3f3f46;
+  }
+  
+  .reflection-item-content {
+    flex: 1;
+    overflow: hidden;
+  }
+  
+  .reflection-item-title {
+    font-weight: 500;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.25rem;
+  }
+  
+  .reflection-item-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  
+  .btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 4px;
+    opacity: 0; /* Nur sichtbar beim Hovern über das Item */
+    transition: var(--transition-smooth);
+  }
+  
+  .reflection-item:hover .btn-delete {
+    opacity: 1;
+  }
+  
+  .btn-delete:hover {
+    color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  
+  /* ==========================================================================
+     5. HAUPTBEREICH (Chat & Eingabe)
+     ========================================================================== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: var(--bg-app);
+  }
+  
+  /* Header (Nur Mobile relevant, Desktop versteckt) */
+  .main-header {
+    display: none;
+    height: var(--header-height);
+    padding: 0 1.5rem;
+    align-items: center;
+    border-bottom: 1px solid #27272a;
+  }
+  
+  .menu-toggle {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    margin-right: 1rem;
+  }
+  
+  .main-header-title {
+    font-family: var(--font-classic);
+    font-size: 1.5rem;
+    color: var(--gold-accent);
+  }
+  
+  /* Empty State (Begrüßung) */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+    animation: fadeIn 1s ease-out;
+  }
+  
+  .quote-mark {
+    font-family: var(--font-classic);
+    font-size: 6rem;
+    color: var(--gold-accent);
+    opacity: 0.3;
+    line-height: 0;
+    margin-bottom: 2rem;
+  }
+  
+  .quote-text {
+    font-family: var(--font-classic);
+    font-size: 2rem;
+    font-style: italic;
+    max-width: 600px;
+    margin-bottom: 1rem;
+    color: #e4e4e7;
+  }
+  
+  .quote-author {
+    font-family: var(--font-modern);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  
+  /* ==========================================================================
+     6. DER CHAT-VERLAUF (Das Sokratische Design)
+     ========================================================================== */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    scroll-behavior: smooth;
+  }
+  
+  /* Animations-Keyframes */
+  @keyframes fadeInSlideUp {
+    0% { opacity: 0; transform: translateY(15px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  
+  .message {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+    animation: fadeInSlideUp 0.5s ease-out forwards;
+  }
+  
+  .message-label {
+    font-family: var(--font-modern);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gold-accent);
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+  }
+  
+  /* Nutzer-Nachricht */
+  .message.user {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
+  
+  .message.user .message-content {
+    font-family: var(--font-modern);
+    background-color: var(--bg-user-bubble);
+    color: #e0e0e0;
+    padding: 1rem 1.5rem;
+    border-radius: 16px 16px 4px 16px;
+    font-size: 1rem;
+    line-height: 1.6;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Sokrates-Nachricht */
+  .message.socrates {
+    align-self: flex-start;
+  }
+  
+  .message.socrates .message-content {
+    font-family: var(--font-classic);
+    color: #f5f5f5;
+    font-size: 1.4rem; 
+    line-height: 1.7;
+    padding: 0.5rem 0;
+    border-left: 3px solid var(--gold-accent);
+    padding-left: 1.5rem;
+  }
+  
+  /* Formatierungen (Falls Sokrates fett/kursiv spricht) */
+  .message-content strong, .message-content b {
+    color: var(--gold-accent);
+    font-weight: 600;
+  }
+  .message-content em, .message-content i {
+    font-style: italic;
+    opacity: 0.9;
+  }
+  
+  /* ==========================================================================
+     7. LADE-INDIKATOR (Sokrates denkt...)
+     ========================================================================== */
+  .thinking {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-left: 1.5rem;
+    animation: fadeInSlideUp 0.3s ease-out;
+  }
+  
+  .thinking span:last-child {
+    font-family: var(--font-classic);
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+  }
+  
+  .thinking-dots {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .thinking-dots span {
+    width: 6px;
+    height: 6px;
+    background-color: var(--gold-accent);
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out both;
+  }
+  
+  .thinking-dots span:nth-child(1) { animation-delay: -0.32s; }
+  .thinking-dots span:nth-child(2) { animation-delay: -0.16s; }
+  
+  @keyframes pulse {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+  
+  /* ==========================================================================
+     8. EINGABEBEREICH (Footer)
+     ========================================================================== */
+  .input-area {
+    padding: 1.5rem 2rem 2rem 2rem;
+    background: linear-gradient(transparent, var(--bg-app) 20%);
+  }
+  
+  .input-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    background-color: var(--bg-input);
+    border: 1px solid #3f3f46;
+    border-radius: 12px;
+    display: flex;
+    align-items: flex-end;
+    padding: 0.5rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    transition: border-color 0.3s ease;
+  }
+  
+  .input-wrapper:focus-within {
+    border-color: var(--gold-accent);
+  }
+  
+  textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-family: var(--font-modern);
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: 0.75rem 1rem;
+    resize: none;
+    max-height: 160px;
+    outline: none;
+  }
+  
+  textarea::placeholder {
+    color: #52525b;
+  }
+  
+  .btn-send {
+    background-color: var(--gold-accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-smooth);
+  }
+  
+  .btn-send-text {
+    display: none; /* Text wird auf Mobile versteckt, Icon bleibt */
+  }
+  
+  .btn-send:hover:not(:disabled) {
+    background-color: var(--gold-hover);
+    transform: translateY(-2px);
+  }
+  
+  .btn-send:disabled {
+    background-color: #3f3f46;
+    color: #71717a;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  /* ==========================================================================
+     9. MOBILE RESPONSIVENESS (Handy & Tablet)
+     ========================================================================== */
+  @media (max-width: 768px) {
+    .main-header {
+      display: flex;
+    }
+  
+    .sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      transform: translateX(-100%);
+      box-shadow: 4px 0 25px rgba(0,0,0,0.5);
+    }
+  
+    .sidebar.open {
+      transform: translateX(0);
+    }
+  
+    .sidebar-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(2px);
+      z-index: 10;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition-smooth);
+    }
+  
+    .sidebar-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+  
+    .message {
+      max-width: 95%; /* Auf dem Handy den Platz besser nutzen */
+    }
+  
+    .input-area {
+      padding: 1rem;
+    }
+  }
+  /* ==========================================================================
+   10. EXPORT BUTTON STYLES
+   ========================================================================== */
+.main-header {
+  display: flex !important; /* Erzwingt Flexbox auf allen Geräten */
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #27272a;
+  background-color: var(--bg-app);
+  z-index: 5;
+}
+
+.main-header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* Desktop-Sichtbarkeit des Headers erzwingen */
+@media (min-width: 769px) {
+  .main-header {
+    height: var(--header-height);
+    padding: 0 2rem;
+  }
+  .menu-toggle {
+    display: none; /* Versteckt den Hamburger-Button auf Desktop */
+  }
+}
+
+.btn-export {
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid #3f3f46;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-modern);
+  font-size: 0.85rem;
+  transition: var(--transition-smooth);
+}
+
+.btn-export:hover:not(:disabled) {
+  color: var(--gold-accent);
+  border-color: var(--gold-accent);
+  background-color: rgba(212, 175, 55, 0.05);
+}
+
+/* Auf kleinen Handys den Text verstecken und nur das Download-Icon zeigen */
+@media (max-width: 480px) {
+  .btn-export span {
+    display: none;
+  }
+  .btn-export {
+    padding: 0.5rem;
+  }
+}

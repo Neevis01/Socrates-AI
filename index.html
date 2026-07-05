@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socrates — Reflexion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121212">
+  <link rel="apple-touch-icon" href="icon.png">
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="sidebar-title">Socrates</h1>
+        <button class="btn-new" id="btn-new">Neue Reflexion</button>
+      </div>
+      <nav class="reflection-list" id="reflection-list"></nav>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <div class="main-header-left">
+          <button class="menu-toggle" id="menu-toggle" aria-label="Menü öffnen">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <span class="main-header-title">Socrates</span>
+        </div>
+        <button class="btn-export hidden" id="btn-export" title="Diese Reflexion exportieren">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Exportieren</span>
+        </button>
+      </header>
+
+      <div class="empty-state" id="empty-state">
+        <span class="quote-mark">„</span>
+        <p class="quote-text" id="quote-text">Ein ungeprüftes Leben ist nicht lebenswert.</p>
+        <p class="quote-author">— Sokrates</p>
+      </div>
+
+      <div class="chat-area hidden" id="chat-area"></div>
+
+      <div class="thinking hidden" id="thinking">
+        <div class="thinking-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <span>Sokrates reflektiert…</span>
+      </div>
+
+      <footer class="input-area">
+        <div class="input-wrapper">
+          <textarea
+            id="message-input"
+            placeholder="Was beschäftigt dich heute?"
+            rows="1"
+            aria-label="Nachricht eingeben"
+          ></textarea>
+          <button class="btn-send" id="btn-send" disabled>
+            <span class="btn-send-text">Senden</span>
+            <svg class="btn-send-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const QUOTES = [
+      'Ein ungeprüftes Leben ist nicht lebenswert.',
+      'Ich weiß, dass ich nichts weiß.',
+      'Tugend ist Wissen.',
+      'Niemand tut absichtlich Böses — er tut nur, was er für gut hält.',
+    ];
+
+    let reflections = [];
+    let activeId = null;
+    let isLoading = false;
+
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const reflectionList = document.getElementById('reflection-list');
+    const emptyState = document.getElementById('empty-state');
+    const chatArea = document.getElementById('chat-area');
+    const thinking = document.getElementById('thinking');
+    const messageInput = document.getElementById('message-input');
+    const btnSend = document.getElementById('btn-send');
+    const btnNew = document.getElementById('btn-new');
+    const menuToggle = document.getElementById('menu-toggle');
+    const quoteText = document.getElementById('quote-text');
+    const btnExport = document.getElementById('btn-export');
+
+    // --- DATENBANK FUNKTIONEN ---
+
+    async function initData() {
+      try {
+        const response = await fetch('/api/history');
+        reflections = await response.json();
+        
+        if (reflections.length > 0) {
+          activeId = reflections[0].id;
+        } else {
+          await createNewReflection();
+        }
+        
+        renderSidebar();
+        renderChat();
+      } catch (err) {
+        console.error("Fehler beim Laden der Historie:", err);
+      }
+    }
+
+    async function saveToDb(reflection) {
+      try {
+        await fetch('/api/save-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reflection)
+        });
+      } catch (err) {
+        console.error("Fehler beim Speichern:", err);
+      }
+    }
+
+    async function deleteFromDb(id) {
+      try {
+        await fetch(`/api/delete-chat/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        console.error("Fehler beim Löschen:", err);
+      }
+    }
+
+    // --- HILFSFUNKTIONEN ---
+
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    function formatDate(iso) {
+      const d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    function parseMarkdown(text) {
+  // 1. Zuerst HTML-sicher machen (Schutz vor XSS-Angriffen)
+  let html = escapeHtml(text);
+
+  // 2. Fettgedruckt: **text**
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  // 3. Aufzählungen (Bulletpoints) abfangen VOR kursiv
+  // Sucht nach * oder - am Zeilenanfang mit einem Leerzeichen danach.
+  // Das 'gm' Flag (global & multiline) sorgt dafür, dass jede Zeile einzeln geprüft wird.
+  html = html.replace(/^[\*\-]\s+(.*)$/gm, '&bull; $1');
+
+  // 4. Kursiv: *text* (Jetzt absolut sicher, da die Listenpunkte schon umgewandelt sind)
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // 5. Zeilenumbrüche: Richtige Absätze statt rohem \n
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}
+
+    function renderSidebar() {
+      reflectionList.innerHTML = reflections
+        .slice()
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map(r => `
+          <div class="reflection-item ${r.id === activeId ? 'active' : ''}" data-id="${r.id}">
+            <div class="reflection-item-content">
+              <div class="reflection-item-title">${escapeHtml(r.title)}</div>
+              <div class="reflection-item-date">${formatDate(r.date)}</div>
+            </div>
+            <button class="btn-delete" data-id="${r.id}" aria-label="Eintrag löschen" title="Löschen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        `)
+        .join('');
+
+      reflectionList.querySelectorAll('.reflection-item').forEach(el => {
+        el.addEventListener('click', () => selectReflection(el.dataset.id));
+      });
+
+      reflectionList.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteReflection(btn.dataset.id);
+        });
+      });
+    }
+
+    function renderChat() {
+  const reflection = reflections.find(r => r.id === activeId);
+
+  if (!reflection || reflection.messages.length === 0) {
+    btnExport.classList.add('hidden'); // HIER NEU: Versteckt den Button, wenn der Chat leer ist
+    emptyState.classList.remove('hidden');
+    chatArea.classList.add('hidden');
+    chatArea.innerHTML = '';
+    return;
+  }
+
+  btnExport.classList.remove('hidden'); // HIER NEU: Zeigt den Button, wenn Nachrichten da sind
+  emptyState.classList.add('hidden');
+  chatArea.classList.remove('hidden');
+
+      chatArea.innerHTML = reflection.messages.map(msg => `
+        <div class="message ${msg.role === 'user' ? 'user' : 'socrates'}">
+          <div class="message-label">${msg.role === 'user' ? 'Du' : 'Sokrates'}</div>
+          <div class="message-content">${parseMarkdown(msg.content)}</div>
+        </div>
+      `).join('');
+
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function selectReflection(id) {
+      activeId = id;
+      renderSidebar();
+      renderChat();
+      closeSidebar();
+      messageInput.focus();
+    }
+
+    function updateReflectionTitle(reflection, firstMessage) {
+      const title = firstMessage.length > 48
+        ? firstMessage.slice(0, 48) + '…'
+        : firstMessage;
+      reflection.title = title;
+    }
+
+    function autoResizeInput() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 160) + 'px';
+    }
+
+    function updateSendButton() {
+      btnSend.disabled = isLoading || !messageInput.value.trim();
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('visible');
+    }
+
+    function openSidebar() {
+      sidebar.classList.add('open');
+      sidebarOverlay.classList.add('visible');
+    }
+
+    function showRandomQuote() {
+      quoteText.textContent = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    }
+
+    // --- HAUPTAKTIONEN (CRUD) ---
+
+    async function deleteReflection(id) {
+      const index = reflections.findIndex(r => r.id === id);
+      if (index === -1) return;
+
+      reflections.splice(index, 1);
+      await deleteFromDb(id);
+
+      if (activeId === id) {
+        activeId = reflections.length > 0 ? reflections[0].id : null;
+      }
+
+      if (reflections.length === 0) {
+        await createNewReflection();
+      }
+
+      renderSidebar();
+      renderChat();
+      showRandomQuote();
+    }
+
+    async function createNewReflection() {
+      const reflection = {
+        id: generateId(),
+        title: 'Neue Reflexion',
+        date: new Date().toISOString(),
+        messages: [],
+      };
+      
+      reflections.unshift(reflection);
+      activeId = reflection.id;
+      
+      await saveToDb(reflection);
+      
+      renderSidebar();
+      renderChat();
+      closeSidebar();
+      messageInput.focus();
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text || isLoading) return;
+
+      if (!activeId) {
+        await createNewReflection();
+      }
+
+      const reflection = reflections.find(r => r.id === activeId);
+      if (!reflection) return;
+
+      reflection.messages.push({ role: 'user', content: text });
+      
+      if (reflection.messages.length === 1) {
+        updateReflectionTitle(reflection, text);
+      }
+
+      messageInput.value = '';
+      autoResizeInput();
+      renderSidebar();
+      renderChat();
+
+      // Sofort speichern, damit die User-Nachricht bei einem Absturz nicht verloren geht
+      await saveToDb(reflection);
+
+      isLoading = true;
+      thinking.classList.remove('hidden');
+      btnSend.disabled = true;
+      messageInput.disabled = true;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: reflection.messages }),
+        });
+
+        if (!response.ok) throw new Error("API Anfrage fehlgeschlagen");
+
+        const data = await response.json();
+        reflection.messages.push({ role: 'assistant', content: data.reply });
+        
+        // KI-Antwort speichern
+        await saveToDb(reflection);
+        renderChat();
+      } catch (err) {
+        console.error(err);
+        reflection.messages.push({
+          role: 'assistant',
+          content: 'Die Reflexion konnte nicht fortgesetzt werden. Bitte versuche es erneut.'
+        });
+        await saveToDb(reflection);
+        renderChat();
+      } finally {
+        isLoading = false;
+        thinking.classList.add('hidden');
+        messageInput.disabled = false;
+        updateSendButton();
+        messageInput.focus();
+      }
+    }
+
+    // --- EVENT LISTENER ---
+    btnNew.addEventListener('click', createNewReflection);
+    btnSend.addEventListener('click', sendMessage);
+    menuToggle.addEventListener('click', openSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    messageInput.addEventListener('input', () => {
+      autoResizeInput();
+      updateSendButton();
+    });
+
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    btnExport.addEventListener('click', () => {
+  const reflection = reflections.find(r => r.id === activeId);
+  
+  // Sicherer Check, falls gar nichts existiert
+  if (!reflection || !reflection.messages || reflection.messages.length === 0) return;
+
+  // Fallback für den Titel im Dokument
+  let markdownText = `# Socratic Reflection: ${reflection.title || 'Unbenannt'}\n`;
+  
+  // Sicherer Check, falls date nicht definiert ist
+  const dateString = reflection.date ? new Date(reflection.date).toLocaleDateString('de-DE') : 'Unbekanntes Datum';
+  markdownText += `Date: ${dateString}\n`;
+  markdownText += `==================================================\n\n`;
+
+  reflection.messages.forEach(msg => {
+    const speaker = msg.role === 'user' ? 'ME' : 'SOCRATES';
+    markdownText += `### [${speaker}]\n${msg.content}\n\n`;
+  });
+
+  const blob = new Blob([markdownText], { type: 'text/markdown;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  // Fallback für den Dateinamen
+  const safeTitle = (reflection.title || 'reflexion').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `socrates_reflection_${safeTitle}.md`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  // WICHTIG: Speicher wieder freigeben
+  URL.revokeObjectURL(url);
+});
+    // START
+    initData();
+    showRandomQuote();
+    // --- PWA SERVICE WORKER REGISTRIERUNG ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('Service Worker erfolgreich registriert:', registration.scope);
+          })
+          .catch(error => {
+            console.log('Service Worker Registrierung fehlgeschlagen:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
