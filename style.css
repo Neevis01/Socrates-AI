@@ -16,7 +16,7 @@
     /* Text & Akzente */
     --text-main: #e4e4e7;      /* Weiches Weiß für normale Texte */
     --text-muted: #a1a1aa;     /* Gedämpftes Grau für Metadaten/Zeiten */
-    --gold-accent: #d4af37;    /* Klassisches Altgold für Sokrates */
+    --gold-accent: #d4af37;    /* Klassisches Altgold für Socrates */
     --gold-hover: #e5c158;     /* Helleres Gold für Hover */
     --danger: #ef4444;         /* Rot für Löschen-Buttons */
     
@@ -260,7 +260,7 @@
   }
   
   /* ==========================================================================
-     6. DER CHAT-VERLAUF (Das Sokratische Design)
+     6. DER CHAT-VERLAUF (Das Socratische Design)
      ========================================================================== */
   .chat-area {
     flex: 1;
@@ -317,7 +317,7 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   }
   
-  /* Sokrates-Nachricht */
+  /* Socrates-Nachricht */
   .message.socrates {
     align-self: flex-start;
   }
@@ -332,7 +332,7 @@
     padding-left: 1.5rem;
   }
   
-  /* Formatierungen (Falls Sokrates fett/kursiv spricht) */
+  /* Formatierungen (Falls Socrates fett/kursiv spricht) */
   .message-content strong, .message-content b {
     color: var(--gold-accent);
     font-weight: 600;
@@ -343,7 +343,7 @@
   }
   
   /* ==========================================================================
-     7. LADE-INDIKATOR (Sokrates denkt...)
+     7. LADE-INDIKATOR (Socrates denkt...)
      ========================================================================== */
   .thinking {
     align-self: flex-start;

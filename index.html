@@ -47,7 +47,7 @@
       <div class="empty-state" id="empty-state">
         <span class="quote-mark">„</span>
         <p class="quote-text" id="quote-text">Ein ungeprüftes Leben ist nicht lebenswert.</p>
-        <p class="quote-author">— Sokrates</p>
+        <p class="quote-author">— Socrates</p>
       </div>
 
       <div class="chat-area hidden" id="chat-area"></div>
@@ -56,7 +56,7 @@
         <div class="thinking-dots">
           <span></span><span></span><span></span>
         </div>
-        <span>Sokrates reflektiert…</span>
+        <span>Socrates reflektiert…</span>
       </div>
 
       <footer class="input-area">
@@ -229,7 +229,7 @@
 
       chatArea.innerHTML = reflection.messages.map(msg => `
         <div class="message ${msg.role === 'user' ? 'user' : 'socrates'}">
-          <div class="message-label">${msg.role === 'user' ? 'Du' : 'Sokrates'}</div>
+          <div class="message-label">${msg.role === 'user' ? 'Du' : 'Socrates'}</div>
           <div class="message-content">${parseMarkdown(msg.content)}</div>
         </div>
       `).join('');
