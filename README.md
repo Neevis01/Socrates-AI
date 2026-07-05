@@ -13,6 +13,7 @@ Think of it as a conversational sparring partner for your brain.
 - **Long-Term Memory:** Built with an SQLite database. It doesn't just remember your last sentence like a goldfish; it transforms the entire chat history so Gemini understands the whole philosophical arc.
 - **No Ghosting:** Your conversations are permanently saved locally. You can close the browser, restart your laptop, or contemplate your existence overnight—your chats stay right there in the sidebar.
 - **Mobile Friendly:** Optimized layouts and a slick dark-mode UI with gold accents. Perfect for having existential crises on your smartphone while lying on the couch.
+- **Philosophical Export (Markdown):** Export your deep dialogues instantly into a beautifully formatted .md file with a single click—locally processed via client-side Blob architecture to keep your server lightweight and fast.
 
 
 
@@ -36,22 +37,17 @@ Want to question your reality too? Here is how to run it locally:
 npm install
 ```
 
-1. Create a .env file in the root directory and drop your Gemini API key in there:
+3. Create a .env file in the root directory and drop your Gemini API key in there:
 
 ```bash
 GEMINI_API_KEY="your_secret_api_key"
 ```
 
-1. Fire up the server:
+4. Fire up the server:
 
 ```bash
 node server.js
 ```
 
-1. Open [http://localhost:3000](http://localhost:3000) or use your local IP to run it on your phone via the same Wi-Fi.
+5. Open [http://localhost:3000](http://localhost:3000) or use your local IP to run it on your phone via the same Wi-Fi.
 
-
-
-# A Note on Security:
-
-My private API keys and local database states are hidden via .gitignore. Because even in philosophy, some boundaries are non-negotiable.
