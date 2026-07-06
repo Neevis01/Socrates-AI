@@ -6,6 +6,18 @@ Instead of being another boring AI assistant that blindly agrees with everything
 
 Think of it as a conversational sparring partner for your brain.
 
+---
+
+## Live Demo
+
+You can try out the live application here: **[Socrates AI Live Demo](https://socrates-ai-kyy7.onrender.com)**
+
+> 💡 **Note on Free-Tier Hosting:** The live app is hosted on Render's free tier. If the app hasn't been used recently, the server will be in a "spin-down" sleep mode. **Please allow 30–50 seconds for the initial server wake-up** on your first message. Once awake, Socrates replies instantly!
+> 
+> *Also note: Since it runs on an ephemeral free instance, the local SQLite chat history resets whenever the server goes to sleep.*
+
+---
+
 ## Features
 
 - **The Socratic Roast Engine:** Powered by Google's Gemini API, fine-tuned to never give you direct advice, comfort you, or agree with you. It only asks painful, deep, contextual counter-questions.
@@ -15,7 +27,7 @@ Think of it as a conversational sparring partner for your brain.
 - **Mobile Friendly:** Optimized layouts and a slick dark-mode UI with gold accents. Perfect for having existential crises on your smartphone while lying on the couch.
 - **Philosophical Export (Markdown):** Export your deep dialogues instantly into a beautifully formatted .md file with a single click—locally processed via client-side Blob architecture to keep your server lightweight and fast.
 
-
+---
 
 ## Tech Stack
 
@@ -24,7 +36,7 @@ Think of it as a conversational sparring partner for your brain.
 - **Database:** SQLite via `better-sqlite3` because setting up a massive MongoDB server for my midnight thoughts felt like overkill.
 - **AI Integration:** Google Gemini SDK `@google/genai`).
 
-
+---
 
 ## Installation & Quickstart
 
