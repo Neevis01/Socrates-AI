@@ -562,3 +562,31 @@
     padding: 0.5rem;
   }
 }
+/* =========================================
+   PANIC BUTTON STYLING
+   ========================================= */
+   .btn-panic {
+    background: transparent;
+    border: 1px solid #27272a;
+    color: var(--text-muted);
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-family: var(--font-modern);
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    transition: var(--transition-smooth);
+    align-self: flex-start; /* Setzt den Button linksbündig */
+  }
+  
+  .btn-panic:hover {
+    border-color: var(--gold-accent);
+    color: var(--gold-accent);
+  }
+  
+  .btn-panic:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #27272a;
+    color: var(--text-muted);
+  }

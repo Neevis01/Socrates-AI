@@ -60,6 +60,7 @@
       </div>
 
       <footer class="input-area">
+        <button id="btn-panic" class="btn-panic hidden" title="Lass dir die Frage anders erklären">Ich verstehe die Frage nicht 🤔</button>
         <div class="input-wrapper">
           <textarea
             id="message-input"
@@ -102,6 +103,7 @@
     const menuToggle = document.getElementById('menu-toggle');
     const quoteText = document.getElementById('quote-text');
     const btnExport = document.getElementById('btn-export');
+    const btnPanic = document.getElementById('btn-panic');
 
     // --- DATENBANK FUNKTIONEN ---
 
@@ -216,34 +218,40 @@
   const reflection = reflections.find(r => r.id === activeId);
 
   if (!reflection || reflection.messages.length === 0) {
-    btnExport.classList.add('hidden'); // HIER NEU: Versteckt den Button, wenn der Chat leer ist
+    btnExport.classList.add('hidden');
+    btnPanic.classList.add('hidden'); // NEU: Panic-Button bei leerem Chat verstecken
     emptyState.classList.remove('hidden');
     chatArea.classList.add('hidden');
     chatArea.innerHTML = '';
     return;
   }
 
-  btnExport.classList.remove('hidden'); // HIER NEU: Zeigt den Button, wenn Nachrichten da sind
+  btnExport.classList.remove('hidden');
   emptyState.classList.add('hidden');
   chatArea.classList.remove('hidden');
 
-      chatArea.innerHTML = reflection.messages.map(msg => `
-        <div class="message ${msg.role === 'user' ? 'user' : 'socrates'}">
-          <div class="message-label">${msg.role === 'user' ? 'Du' : 'Socrates'}</div>
-          <div class="message-content">${parseMarkdown(msg.content)}</div>
-        </div>
-      `).join('');
+  // NEU: Panic-Button-Sichtbarkeit anhand der letzten Nachricht bestimmen
+  const lastMsg = reflection.messages[reflection.messages.length - 1];
+  const isErrorMsg = lastMsg.content === 'Die Reflexion konnte nicht fortgesetzt werden. Bitte versuche es erneut.';
+  const shouldShowPanic = lastMsg.role === 'assistant' && !isErrorMsg;
+  btnPanic.classList.toggle('hidden', !shouldShowPanic);
 
-      chatArea.scrollTop = chatArea.scrollHeight;
-    }
+  chatArea.innerHTML = reflection.messages.map(msg => `
+    <div class="message ${msg.role === 'user' ? 'user' : 'socrates'}">
+      <div class="message-label">${msg.role === 'user' ? 'Du' : 'Socrates'}</div>
+      <div class="message-content">${parseMarkdown(msg.content)}</div>
+    </div>
+  `).join('');
 
-    function selectReflection(id) {
-      activeId = id;
-      renderSidebar();
-      renderChat();
-      closeSidebar();
-      messageInput.focus();
-    }
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+function selectReflection(id) {
+  activeId = id;
+  renderSidebar();
+  renderChat();
+  closeSidebar();
+  messageInput.focus();
+}
 
     function updateReflectionTitle(reflection, firstMessage) {
       const title = firstMessage.length > 48
@@ -316,74 +324,73 @@
       messageInput.focus();
     }
 
-    async function sendMessage() {
-      const text = messageInput.value.trim();
-      if (!text || isLoading) return;
+    async function sendMessage(isPanic = false) {
+  const text = isPanic ? '❓' : messageInput.value.trim();
+  if ((!text || isLoading)) return;
 
-      if (!activeId) {
-        await createNewReflection();
-      }
+  if (!activeId) {
+    await createNewReflection();
+  }
 
-      const reflection = reflections.find(r => r.id === activeId);
-      if (!reflection) return;
+  const reflection = reflections.find(r => r.id === activeId);
+  if (!reflection) return;
 
-      reflection.messages.push({ role: 'user', content: text });
-      
-      if (reflection.messages.length === 1) {
-        updateReflectionTitle(reflection, text);
-      }
+  reflection.messages.push({ role: 'user', content: text });
 
-      messageInput.value = '';
-      autoResizeInput();
-      renderSidebar();
-      renderChat();
+  if (reflection.messages.length === 1) {
+    updateReflectionTitle(reflection, text);
+  }
 
-      // Sofort speichern, damit die User-Nachricht bei einem Absturz nicht verloren geht
-      await saveToDb(reflection);
+  messageInput.value = '';
+  autoResizeInput();
+  renderSidebar();
+  renderChat();
 
-      isLoading = true;
-      thinking.classList.remove('hidden');
-      btnSend.disabled = true;
-      messageInput.disabled = true;
+  await saveToDb(reflection);
 
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: reflection.messages }),
-        });
+  isLoading = true;
+  thinking.classList.remove('hidden');
+  btnSend.disabled = true;
+  messageInput.disabled = true;
+  btnPanic.disabled = true; // NEU
 
-        if (!response.ok) throw new Error("API Anfrage fehlgeschlagen");
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: reflection.messages, isPanic: isPanic }), // NEU: Flag durchreichen
+    });
 
-        const data = await response.json();
-        reflection.messages.push({ role: 'assistant', content: data.reply });
-        
-        // KI-Antwort speichern
-        await saveToDb(reflection);
-        renderChat();
-      } catch (err) {
-        console.error(err);
-        reflection.messages.push({
-          role: 'assistant',
-          content: 'Die Reflexion konnte nicht fortgesetzt werden. Bitte versuche es erneut.'
-        });
-        await saveToDb(reflection);
-        renderChat();
-      } finally {
-        isLoading = false;
-        thinking.classList.add('hidden');
-        messageInput.disabled = false;
-        updateSendButton();
-        messageInput.focus();
-      }
-    }
+    if (!response.ok) throw new Error("API Anfrage fehlgeschlagen");
+
+    const data = await response.json();
+    reflection.messages.push({ role: 'assistant', content: data.reply });
+    await saveToDb(reflection);
+    renderChat();
+  } catch (err) {
+    console.error(err);
+    reflection.messages.push({
+      role: 'assistant',
+      content: 'Die Reflexion konnte nicht fortgesetzt werden. Bitte versuche es erneut.'
+    });
+    await saveToDb(reflection);
+    renderChat();
+  } finally {
+    isLoading = false;
+    thinking.classList.add('hidden');
+    messageInput.disabled = false;
+    btnPanic.disabled = false; // NEU
+    updateSendButton();
+    messageInput.focus();
+  }
+}
 
     // --- EVENT LISTENER ---
     btnNew.addEventListener('click', createNewReflection);
     btnSend.addEventListener('click', sendMessage);
     menuToggle.addEventListener('click', openSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
-
+    btnPanic.addEventListener('click', () => sendMessage(true));
     messageInput.addEventListener('input', () => {
       autoResizeInput();
       updateSendButton();
