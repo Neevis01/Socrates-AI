@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { isCrisisMessage, applyPanicFlag, getErrorResponse } = require('./logic');
 const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const Database = require('better-sqlite3');
@@ -89,11 +91,20 @@ console.log("-----------------------------------------");
 
 // Gemini Client initialisieren
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY.trim() });
-
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 Minute
+  max: 12, // max. 12 Nachrichten pro Minute pro IP
+  message: {
+    reply: "Du denkst gerade sehr schnell nach! Gönn Socrates kurz eine Pause und versuch's in einer Minute wieder.",
+    isError: true // nutzt gleich dein neues Flag mit
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 // --- API ENDPUNKTE ---
 
 // 1. Chat-Nachricht an KI senden
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   console.log("ANGEKOMMENES PAKET:", req.body);
 
   try {
@@ -102,33 +113,28 @@ app.post('/api/chat', async (req, res) => {
     if (!frontendMessages || frontendMessages.length === 0) {
       return res.status(400).json({ error: "Keine Nachricht empfangen." });
     }
+// --- SAUBERE LOGIK (via logic.js) ---
+const lastMsg = frontendMessages[frontendMessages.length - 1];
 
-    // --- START NEUE LOGIK (Krisenschutz & Panic Button) ---
-    const lastMsg = frontendMessages[frontendMessages.length - 1];
-
-    if (lastMsg && lastMsg.role === 'user') {
-        // 1. Krisenschutz (Regex-Filter)
-        const userText = lastMsg.content.toLowerCase();
-        const crisisRegex = /\b(will mich umbringen|will nicht mehr leben|suizidgedanken|mir etwas antun|keinen ausweg mehr|will sterben)\b/i;
-        
-        if (crisisRegex.test(userText)) {
-            console.log("STATUS: Krisenschutz hat ausgelöst. Gemini-Call blockiert.");
-            const crisisMsg = "Das klingt nach einer schweren Last, die du gerade trägst. Ich bin nur ein Denk-Sparringspartner und kann dir in einer echten Krise nicht die Hilfe geben, die du verdienst. Bitte sprich jetzt mit jemandem: Telefonseelsorge, kostenlos und rund um die Uhr, unter 0800 111 0 111 oder 0800 111 0 222, auch per Chat auf online.telefonseelsorge.de.";
-            
-            // Sofortiger Abbruch, wir geben die statische Notfall-Nachricht zurück
-            return res.json({ 
-                reply: crisisMsg, 
-                text: crisisMsg, 
-                response: crisisMsg 
-            });
-        }
-
-        // 2. Panic Button (Deterministisches Flag)
-        if (req.body.isPanic) {
-            console.log("STATUS: Panic Button gedrückt. Sende Kontrollsignal an Gemini.");
-            lastMsg.content = "[PANIC_BUTTON_TRIGGERED] " + lastMsg.content;
-        }
+if (lastMsg && lastMsg.role === 'user') {
+    
+    // 1. Krisenschutz prüfen
+    if (isCrisisMessage(lastMsg.content)) {
+        console.log("STATUS: Krisenschutz hat ausgelöst.");
+        const crisisMsg = "Das klingt nach einer schweren Last, die du gerade trägst. Ich bin nur ein Denk-Sparringspartner und kann dir in einer echten Krise nicht die Hilfe bieten, die du brauchst.";
+        return res.json({
+            reply: crisisMsg,
+            text: crisisMsg,
+            response: crisisMsg,
+            isError: true // Wichtig für das Frontend
+        });
     }
+
+    // 2. Panic Button anwenden (nur auf die letzte Nachricht!)
+    if (req.body.isPanic) {
+        lastMsg.content = applyPanicFlag(lastMsg.content, true);
+    }
+}
     // --- ENDE NEUE LOGIK ---
     const geminiHistory = frontendMessages.map(msg => {
       return {
@@ -151,9 +157,18 @@ app.post('/api/chat', async (req, res) => {
         response: response.text 
     });
 
-  } catch (error) {
-    console.error("Gemini API Fehler details:", error);
-    res.status(500).json({ error: "Die Reflexion konnte nicht fortgesetzt werden." });
+  } catch (err) {
+    console.error("Gemini API Error:", err);
+  
+    const status = err.status || (err.response && err.response.status);
+    const isOverload = status === 503 || status === 429 || 
+                       (err.message && err.message.toLowerCase().includes('overloaded'));
+  
+    const errorMsg = isOverload
+      ? "Socrates wird gerade von zu vielen Fragen bestürmt. Gib ihm einen Moment und versuch es gleich nochmal."
+      : "Die Reflexion konnte nicht fortgesetzt werden. Bitte versuche es erneut.";
+  
+    return res.json({ reply: errorMsg, isError: true }); // NEU: explizites Flag
   }
 });
 
@@ -207,6 +222,14 @@ app.delete('/api/delete-chat/:id', (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => {
+
+// Prüft, ob die Datei direkt ausgeführt wird (node server.js)
+// Wenn ja -> Server starten. Wenn nein (Import durch Test) -> Nicht starten!
+if (require.main === module) {
+  app.listen(PORT, () => {
     console.log(`Socrates läuft live auf http://localhost:3000`);
-});
+  });
+}
+
+// Exportieren, damit Supertest die 'app' für Tests nutzen kann
+module.exports = app;

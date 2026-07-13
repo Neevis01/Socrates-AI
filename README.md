@@ -29,6 +29,18 @@ You can try out the live application here: **[Socrates AI Live Demo](https://soc
 
 ---
 
+## 🧠 Architecture & Technical Highlights
+
+To make this app robust, I focused heavily on systemic reliability and edge-case handling:
+
+- **Decoupled Business Logic:** Core rules (crisis detection, panic-flag injection, error classification) live in a standalone `logic.js`, fully decoupled from the Express routing layer.
+- **State-Based UI Rendering:** UI controls (like the context-aware Panic Button) react deterministically to the central chat state rather than individual events — eliminating a whole class of stale-UI bugs.
+- **Deterministic Backend Overrides (Panic Button):** The frontend sends a discrete control flag, scoped strictly to the *current* message to avoid polluting the conversation history. The backend injects a hard signal (`[PANIC_BUTTON_TRIGGERED]`) that deterministically forces the AI out of its Socratic constraints into an empathetic explanation mode.
+- **Graceful Degradation:** API overloads (503/429 from Gemini) are classified separately from hard failures and communicated via distinct fallback messages — Socrates admits when he's overwhelmed, not broken.
+- **Rate Limiting:** The chat endpoint is protected against abuse, keeping the (student-budget) Gemini API costs in check.
+- **Test Coverage:** Core safety logic (crisis regex, panic-flag scoping, error classification, rate limiting) is covered by an automated Vitest + Supertest suite — because "feels like it works" isn't good enough when the topic is someone's philosophical (or emotional) wellbeing.
+---
+
 ## Tech Stack
 
 - **Frontend:** Semantic HTML5, Custom Modern CSS3 (Variables, Keyframe Animations), Vanilla JavaScript (Asynchronous Fetch API). No bloated frameworks, just raw performance.
