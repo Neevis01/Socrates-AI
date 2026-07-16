@@ -5,21 +5,21 @@
     /* Typografie */
     --font-modern: 'Inter', system-ui, sans-serif;
     --font-classic: 'Cormorant Garamond', serif;
-    
+  
     /* Farbpalette (Edler Dark Mode) */
     --bg-app: #121212;         /* Sehr tiefes Dunkelgrau für Hauptbereich */
     --bg-sidebar: #18181b;     /* Etwas heller für die Seitenleiste */
     --bg-input: #202024;       /* Hintergrund für Eingabefeld */
     --bg-user-bubble: #27272a; /* Blase für Nutzer-Nachrichten */
     --bg-hover: #2a2a30;       /* Hover-Status für Menüs */
-    
+  
     /* Text & Akzente */
     --text-main: #e4e4e7;      /* Weiches Weiß für normale Texte */
     --text-muted: #a1a1aa;     /* Gedämpftes Grau für Metadaten/Zeiten */
     --gold-accent: #d4af37;    /* Klassisches Altgold für Socrates */
     --gold-hover: #e5c158;     /* Helleres Gold für Hover */
     --danger: #ef4444;         /* Rot für Löschen-Buttons */
-    
+  
     /* Layout */
     --sidebar-width: 320px;
     --header-height: 60px;
@@ -37,6 +37,7 @@
     background-color: var(--bg-app);
     color: var(--text-main);
     height: 100vh;
+    height: 100dvh; /* Fix: iOS Safari berechnet 100vh im Hochformat falsch (Adressleiste wird mitgerechnet, obwohl sie sichtbar bleibt) und schiebt Elemente wie das Eingabefeld aus dem sichtbaren Bereich. 100dvh berücksichtigt die tatsächlich sichtbare Höhe korrekt. */
     overflow: hidden; /* Verhindert Scrollen der ganzen Seite */
     line-height: 1.5;
   }
@@ -69,6 +70,7 @@
   .app {
     display: flex;
     height: 100vh;
+    height: 100dvh; /* Fix: siehe Kommentar bei body */
     width: 100vw;
     position: relative;
   }
@@ -198,13 +200,27 @@
     background-color: var(--bg-app);
   }
   
-  /* Header (Nur Mobile relevant, Desktop versteckt) */
+  /* Header: enthält Hamburger-Menü (nur mobil sichtbar) und Export-Button (immer sichtbar) */
   .main-header {
-    display: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     height: var(--header-height);
     padding: 0 1.5rem;
-    align-items: center;
     border-bottom: 1px solid #27272a;
+    background-color: var(--bg-app);
+    z-index: 5;
+  }
+  
+  .main-header-left {
+    display: flex;
+    align-items: center;
+  }
+  
+  .main-header-title {
+    font-family: var(--font-classic);
+    font-size: 1.5rem;
+    color: var(--gold-accent);
   }
   
   .menu-toggle {
@@ -213,12 +229,28 @@
     color: var(--text-main);
     cursor: pointer;
     margin-right: 1rem;
+    display: none; /* Standard: Desktop hat keine Sidebar-Klappe nötig. Wird in Sektion 10 fürs Mobile wieder eingeblendet. */
   }
   
-  .main-header-title {
-    font-family: var(--font-classic);
-    font-size: 1.5rem;
+  .btn-export {
+    background-color: transparent;
+    color: var(--text-muted);
+    border: 1px solid #3f3f46;
+    padding: 0.5rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-modern);
+    font-size: 0.85rem;
+    transition: var(--transition-smooth);
+  }
+  
+  .btn-export:hover:not(:disabled) {
     color: var(--gold-accent);
+    border-color: var(--gold-accent);
+    background-color: rgba(212, 175, 55, 0.05);
   }
   
   /* Empty State (Begrüßung) */
@@ -325,7 +357,7 @@
   .message.socrates .message-content {
     font-family: var(--font-classic);
     color: #f5f5f5;
-    font-size: 1.4rem; 
+    font-size: 1.4rem;
     line-height: 1.7;
     padding: 0.5rem 0;
     border-left: 3px solid var(--gold-accent);
@@ -383,7 +415,7 @@
   }
   
   /* ==========================================================================
-     8. EINGABEBEREICH (Footer)
+     8. EINGABEBEREICH (Footer): Textfeld, Senden- und Panic-Button
      ========================================================================== */
   .input-area {
     padding: 1.5rem 2rem 2rem 2rem;
@@ -456,12 +488,39 @@
     transform: none;
   }
   
+  .btn-panic {
+    background: transparent;
+    border: 1px solid #27272a;
+    color: var(--text-muted);
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-family: var(--font-modern);
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    transition: var(--transition-smooth);
+    align-self: flex-start; /* Setzt den Button linksbündig */
+  }
+  
+  .btn-panic:hover {
+    border-color: var(--gold-accent);
+    color: var(--gold-accent);
+  }
+  
+  .btn-panic:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #27272a;
+    color: var(--text-muted);
+  }
+  
   /* ==========================================================================
      9. MOBILE RESPONSIVENESS (Handy & Tablet)
+     Alle Breakpoint-Anpassungen gesammelt an einer Stelle.
      ========================================================================== */
   @media (max-width: 768px) {
-    .main-header {
-      display: flex;
+    .menu-toggle {
+      display: flex; /* Hamburger-Button nur auf Mobile sichtbar */
     }
   
     .sidebar {
@@ -504,89 +563,13 @@
       padding: 1rem;
     }
   }
-  /* ==========================================================================
-   10. EXPORT BUTTON STYLES
-   ========================================================================== */
-.main-header {
-  display: flex !important; /* Erzwingt Flexbox auf allen Geräten */
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #27272a;
-  background-color: var(--bg-app);
-  z-index: 5;
-}
-
-.main-header-left {
-  display: flex;
-  align-items: center;
-}
-
-/* Desktop-Sichtbarkeit des Headers erzwingen */
-@media (min-width: 769px) {
-  .main-header {
-    height: var(--header-height);
-    padding: 0 2rem;
-  }
-  .menu-toggle {
-    display: none; /* Versteckt den Hamburger-Button auf Desktop */
-  }
-}
-
-.btn-export {
-  background-color: transparent;
-  color: var(--text-muted);
-  border: 1px solid #3f3f46;
-  padding: 0.5rem 0.8rem;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--font-modern);
-  font-size: 0.85rem;
-  transition: var(--transition-smooth);
-}
-
-.btn-export:hover:not(:disabled) {
-  color: var(--gold-accent);
-  border-color: var(--gold-accent);
-  background-color: rgba(212, 175, 55, 0.05);
-}
-
-/* Auf kleinen Handys den Text verstecken und nur das Download-Icon zeigen */
-@media (max-width: 480px) {
-  .btn-export span {
-    display: none;
-  }
-  .btn-export {
-    padding: 0.5rem;
-  }
-}
-/* =========================================
-   PANIC BUTTON STYLING
-   ========================================= */
-   .btn-panic {
-    background: transparent;
-    border: 1px solid #27272a;
-    color: var(--text-muted);
-    padding: 0.4rem 0.8rem;
-    border-radius: 12px;
-    font-family: var(--font-modern);
-    font-size: 0.8rem;
-    cursor: pointer;
-    margin-bottom: 0.5rem;
-    transition: var(--transition-smooth);
-    align-self: flex-start; /* Setzt den Button linksbündig */
-  }
   
-  .btn-panic:hover {
-    border-color: var(--gold-accent);
-    color: var(--gold-accent);
-  }
-  
-  .btn-panic:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #27272a;
-    color: var(--text-muted);
+  /* Sehr kleine Screens: Export-Button-Text ausblenden, nur Icon zeigen */
+  @media (max-width: 480px) {
+    .btn-export span {
+      display: none;
+    }
+    .btn-export {
+      padding: 0.5rem;
+    }
   }
