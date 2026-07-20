@@ -91,6 +91,16 @@ console.log("-----------------------------------------");
 
 // Gemini Client initialisieren
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY.trim() });
+
+// --- MODELL-KONFIGURATION & FALLBACK ---
+const PRIMARY_MODEL = 'gemini-3.5-flash';
+const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
+
+function isOverloadError(err) {
+  const status = err.status || (err.response && err.response.status);
+  return status === 503 || status === 429 ||
+    (err.message && err.message.toLowerCase().includes('overloaded'));
+}
 const chatLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 Minute
   max: 12, // max. 12 Nachrichten pro Minute pro IP
@@ -143,13 +153,36 @@ if (lastMsg && lastMsg.role === 'user') {
       };
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash', 
-      contents: geminiHistory,
-      config: {
-        systemInstruction: SOCRATES_SYSTEM_PROMPT
+    async function callGemini(model) {
+      return ai.models.generateContent({
+        model,
+        contents: geminiHistory,
+        config: {
+          systemInstruction: SOCRATES_SYSTEM_PROMPT
+        }
+      });
+    }
+
+    let response;
+    try {
+      response = await callGemini(PRIMARY_MODEL);
+    } catch (primaryErr) {
+      console.error(`Primärmodell (${PRIMARY_MODEL}) fehlgeschlagen:`, primaryErr);
+
+      if (isOverloadError(primaryErr)) {
+        try {
+          console.log(`STATUS: Wechsle silent auf Fallback-Modell ${FALLBACK_MODEL}.`);
+          response = await callGemini(FALLBACK_MODEL);
+        } catch (fallbackErr) {
+          console.error(`Fallback-Modell (${FALLBACK_MODEL}) ebenfalls fehlgeschlagen:`, fallbackErr);
+          const errorData = getErrorResponse(fallbackErr);
+          return res.json(errorData);
+        }
+      } else {
+        const errorData = getErrorResponse(primaryErr);
+        return res.json(errorData);
       }
-    });
+    }
 
     res.json({ 
         reply: response.text, 
@@ -158,17 +191,9 @@ if (lastMsg && lastMsg.role === 'user') {
     });
 
   } catch (err) {
-    console.error("Gemini API Error:", err);
-  
-    const status = err.status || (err.response && err.response.status);
-    const isOverload = status === 503 || status === 429 || 
-                       (err.message && err.message.toLowerCase().includes('overloaded'));
-  
-    const errorMsg = isOverload
-      ? "Socrates wird gerade von zu vielen Fragen bestürmt. Gib ihm einen Moment und versuch es gleich nochmal."
-      : "Die Reflexion konnte nicht fortgesetzt werden. Bitte versuche es erneut.";
-  
-    return res.json({ reply: errorMsg, isError: true }); // NEU: explizites Flag
+    console.error("Unerwarteter Fehler in der Chat-Route:", err);
+    const errorData = getErrorResponse(err);
+    return res.json(errorData);
   }
 });
 

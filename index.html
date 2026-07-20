@@ -410,7 +410,7 @@ function selectReflection(id) {
 
     // --- EVENT LISTENER ---
     btnNew.addEventListener('click', createNewReflection);
-    btnSend.addEventListener('click', sendMessage);
+    btnSend.addEventListener('click', () => sendMessage());
     menuToggle.addEventListener('click', openSidebar);
     sidebarOverlay.addEventListener('click', closeSidebar);
     btnPanic.addEventListener('click', () => sendMessage(true));
